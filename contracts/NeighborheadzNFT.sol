@@ -135,7 +135,14 @@ contract NeighborheadzNFT is AccessControl, ReentrancyGuard, ERC721, ERC721Royal
         _baseTokenURI = baseTokenURI_;
         _fundRecipient = payable(fundRecipient_);
         _tokenIndex = _startIndex;
-        _setDefaultRoyalty(_fundRecipient, 1000);
+        _setDefaultRoyalty(_fundRecipient, 0);
+    }
+
+    /**
+     * @dev Set royalty of this contract
+     */
+    function setDefaultRoyalty(address receiver, uint96 feeNumerator) external onlyAdmin {
+        _setDefaultRoyalty(receiver, feeNumerator);
     }
 
     /**

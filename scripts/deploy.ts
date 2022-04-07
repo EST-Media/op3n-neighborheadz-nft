@@ -1,8 +1,5 @@
 import hre = require("hardhat");
 
-// beforeReveal: "ipfs://QmYsAGA6UWkqScDuphvwbfXuyPJ3siYY8JJCMVQAixp42x/"
-// aftereReveal:
-
 async function main() {
   const contractClass = "NeighborheadzNFT";
   const contractFactory = await hre.ethers.getContractFactory(contractClass);
@@ -15,7 +12,7 @@ async function main() {
     30,
     53,
     5555,
-    "ipfs://QmXnMrJuNANFRV2GfdiyAdNkjcKzR3HoJWpxXfz49x1aXU/",
+    "ipfs://QmTW1pFN4zqnFPWjkRy1UVxZuwFLKtX4Sq8acQ1ZaqE1J2/",
     owner.address
   );
 

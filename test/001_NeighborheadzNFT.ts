@@ -180,13 +180,13 @@ describe("NeighborheadzNFT contract", function () {
         expect(await contract.tokenURI(81)).to.equal("https://nft.uri/81");
       });
 
-      it("sets royaltyInfo is fundRecipient and 10%", async function () {
+      it("sets royaltyInfo is fundRecipient and 0%", async function () {
         const result = await contract.royaltyInfo(
           81,
           ethers.utils.parseUnits("1", "ether")
         );
         expect(result[0]).to.equal(fundRecipient.address);
-        expect(result[1]).to.equal(ethers.utils.parseUnits("0.1", "ether"));
+        expect(result[1]).to.equal(ethers.utils.parseUnits("0", "ether"));
       });
 
       describe("when already activated", function () {
@@ -210,6 +210,26 @@ describe("NeighborheadzNFT contract", function () {
           contract
             .connect(addrs[0])
             .activate(80, 53, 5555, "https://nft1.uri/", addrs[1].address)
+        ).to.be.revertedWith("AccessControl:");
+      });
+    });
+  });
+
+  describe("#setDefaultRoyalty(address receiver, uint96 feeNumerator) external onlyAdmin", function () {
+    it("sets royaltyInfo 10%", async function () {
+      await contract.setDefaultRoyalty(addrs[1].address, 1000);
+      const result = await contract.royaltyInfo(
+        81,
+        ethers.utils.parseUnits("1", "ether")
+      );
+      expect(result[0]).to.equal(addrs[1].address);
+      expect(result[1]).to.equal(ethers.utils.parseUnits("0.1", "ether"));
+    });
+
+    describe("when caller is not admin", function () {
+      it("reverts with AccessControl:", async function () {
+        await expect(
+          contract.connect(addrs[0]).setDefaultRoyalty(addrs[1].address, 10000)
         ).to.be.revertedWith("AccessControl:");
       });
     });
