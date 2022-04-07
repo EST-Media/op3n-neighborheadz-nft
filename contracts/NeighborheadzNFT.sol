@@ -17,15 +17,17 @@ contract NeighborheadzNFT is AccessControl, ReentrancyGuard, ERC721, ERC721Royal
     using ECDSA for bytes32;
     using Address for address;
 
+    uint256 public constant UNIT_PRICE = 80000000000000000; // 0.08 ETH
+    uint8 public constant MAX_PRESALE_PER_MINTER = 2;
     address private _owner;
     uint256 private _totalSupply;
     uint256 private _tokenIndex;
     address payable private _fundRecipient;
     uint256 private _startIndex;
     bytes32 private _preSaleRoot;
-    uint256 public constant UNIT_PRICE = 100000000000000000; // 0.1 ETH
-    uint8 public constant MAX_PRESALE_PER_MINTER = 2;
-    string private _tokenURI;
+    string private _baseTokenURI;
+    uint256 private _maxGiveaway;
+    uint256 private _giveaway;
     mapping(address => uint8) private _preSaleMinted;
     mapping(address => bool) private _verifiers;
     mapping(bytes32 => bool) public finalized;
@@ -113,15 +115,24 @@ contract NeighborheadzNFT is AccessControl, ReentrancyGuard, ERC721, ERC721Royal
     }
 
     /**
+     * @dev Set baseTokenURI
+     * Can only be called by the admin.
+     */
+    function setBaseTokenURI(string memory baseTokenURI_) external onlyAdmin {
+        _baseTokenURI = baseTokenURI_;
+    }
+
+    /**
      * @dev Activate this contract
      * Can only be called by the admin.
      */
-    function activate(uint256 startIndex_, uint256 totalSupply_, string memory tokenURI_, address fundRecipient_) external onlyAdmin {
+    function activate(uint256 startIndex_, uint256 maxGiveaway_, uint256 totalSupply_, string memory baseTokenURI_, address fundRecipient_) external onlyAdmin {
          require(_tokenIndex == 0, "NBHZ: Already activated");
         
         _startIndex = startIndex_;
+        _maxGiveaway = maxGiveaway_;
         _totalSupply = totalSupply_;
-        _tokenURI = tokenURI_;
+        _baseTokenURI = baseTokenURI_;
         _fundRecipient = payable(fundRecipient_);
         _tokenIndex = _startIndex;
         _setDefaultRoyalty(_fundRecipient, 1000);
@@ -142,6 +153,13 @@ contract NeighborheadzNFT is AccessControl, ReentrancyGuard, ERC721, ERC721Royal
     }
 
     /**
+     * @dev Returns tokens count.
+     */
+    function tokenCount() external view returns (uint256) {
+        return _tokenIndex;
+    }
+
+    /**
      * @dev See {ERC721-_burn}, {ERC721Royalty-_burn}
      */
     function _burn(uint256 tokenId) internal virtual override(ERC721, ERC721Royalty) {
@@ -154,17 +172,7 @@ contract NeighborheadzNFT is AccessControl, ReentrancyGuard, ERC721, ERC721Royal
      * by default, can be overriden in child contracts.
      */
     function _baseURI() internal view virtual override returns (string memory) {
-        return _tokenURI;
-    }
-
-    /**
-     * @dev mintTo tokenID to receiver.
-     * Can only be called by the admin.
-     */
-    function mintTo(address toAddress, uint256 tokenId) external onlyAdmin {
-        require(0 < tokenId && tokenId <= _startIndex, "NBHZ: Invalid tokenId");
-
-        _mint(toAddress, tokenId);
+        return _baseTokenURI;
     }
 
     /**
@@ -179,8 +187,8 @@ contract NeighborheadzNFT is AccessControl, ReentrancyGuard, ERC721, ERC721Royal
         require(_verifiers[_verifiedHash.toEthSignedMessageHash().recover(sig)], "NBHZ: Unauthorized");
         
         finalized[_verifiedHash] = true;
-        _tokenIndex++;
         Address.sendValue(_fundRecipient, msg.value);
+        _tokenIndex++;
         _mint(msg.sender, _tokenIndex);
     }
 
@@ -207,16 +215,31 @@ contract NeighborheadzNFT is AccessControl, ReentrancyGuard, ERC721, ERC721Royal
     /**
      * @dev mint a NFT.
      */
-    function mint(uint256 salt, bytes memory sig, bytes32[] memory proof) external nonReentrant payable {
+    function mint(uint256 salt, bytes memory sig, bytes32[] memory proof) external payable {
         require(_validateMint(proof), "NBHZ: Can not mint");
+        
         _mintNFT(salt, sig);
     }
 
     /**
-     * @dev preMint a NFT.
+     * @dev mint tokenID from 1 - 30 for vips.
+     * Can only be called by the admin.
      */
-    function preMint(uint256 salt, bytes memory sig, bytes32[] memory proof) external nonReentrant payable {
-        require(MerkleProof.verify(proof, _preSaleRoot, keccak256(abi.encodePacked(_msgSender()))), "NBHZ: Can not mint");
-        _mintNFT(salt, sig);
+    function mintVIP(address toAddress, uint256 tokenId) external onlyAdmin {
+        require(0 < tokenId && tokenId <= _startIndex, "NBHZ: Invalid tokenId");
+        
+        _mint(toAddress, tokenId);
+    }
+
+    /**
+     * @dev giveaway token to receiver.
+     * Can only be called by the admin.
+     */
+    function giveaway(address toAddress) external onlyAdmin {
+        require(_giveaway < _maxGiveaway, "NBHZ: Can not giveaway");
+
+        _giveaway++;
+        _tokenIndex++;
+        _mint(toAddress, _tokenIndex);
     }
 }

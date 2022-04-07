@@ -1,7 +1,10 @@
+// import fs from "fs"; // Filesystem
+// import path from "path"; // Path
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { MerkleTree } from "merkletreejs";
 import keccak256 = require("keccak256");
+// import { parseUnits, solidityKeccak256 } from "ethers/lib/utils";
 
 describe("NeighborheadzNFT contract", function () {
   let contract: any;
@@ -25,9 +28,9 @@ describe("NeighborheadzNFT contract", function () {
       expect(await contract.symbol()).to.equal("NBHZ");
     });
 
-    it("sets UNIT_PRICE is 0.1 eth", async function () {
+    it("sets UNIT_PRICE is 0.08 eth", async function () {
       expect(await contract.UNIT_PRICE()).to.equal(
-        ethers.utils.parseUnits("0.1", "ether")
+        ethers.utils.parseUnits("0.08", "ether")
       );
     });
 
@@ -140,6 +143,7 @@ describe("NeighborheadzNFT contract", function () {
         fundRecipient = addrs[2];
         await contract.activate(
           80,
+          53,
           5555,
           "https://nft.uri/",
           fundRecipient.address
@@ -190,6 +194,7 @@ describe("NeighborheadzNFT contract", function () {
           await expect(
             contract.activate(
               80,
+              53,
               5555,
               "https://nft1.uri/",
               fundRecipient.address
@@ -204,13 +209,44 @@ describe("NeighborheadzNFT contract", function () {
         await expect(
           contract
             .connect(addrs[0])
-            .activate(80, 5555, "https://nft1.uri/", addrs[1].address)
+            .activate(80, 53, 5555, "https://nft1.uri/", addrs[1].address)
         ).to.be.revertedWith("AccessControl:");
       });
     });
   });
 
-  describe("#mintTo(address toAddress, uint256 tokenId) external onlyAdmin", function () {
+  describe("#setBaseTokenURI(string memory baseTokenURI_) external onlyAdmin", function () {
+    beforeEach(async function () {
+      await contract.activate(30, 53, 90, "https://nft.uri/", owner.address);
+    });
+
+    it("sets baseTokenURI", async function () {
+      const salt = new Date().getTime();
+      const orderHash = ethers.utils.solidityKeccak256(sigTypes, [
+        addrs[0].address,
+        salt,
+      ]);
+      const sig = await owner.signMessage(ethers.utils.arrayify(orderHash));
+      await contract.connect(addrs[0]).mint(salt, sig, [], {
+        value: ethers.utils.parseUnits("0.1", "ether"),
+      });
+
+      expect(await contract.tokenURI(31)).to.equal("https://nft.uri/31");
+      const baseTokenURI = "ipfs://BaseTokenURI/";
+      await contract.setBaseTokenURI(baseTokenURI);
+      expect(await contract.tokenURI(31)).to.equal("ipfs://BaseTokenURI/31");
+    });
+
+    describe("when caller is not admin", function () {
+      it("reverts with AccessControl:", async function () {
+        await expect(
+          contract.connect(addrs[0]).setBaseTokenURI("ipfs://BaseTokenURI/")
+        ).to.be.revertedWith("AccessControl:");
+      });
+    });
+  });
+
+  describe("#mintVIP(address toAddress, uint256 tokenId) external onlyAdmin", function () {
     let fundRecipient: any;
 
     beforeEach(async function () {
@@ -218,28 +254,29 @@ describe("NeighborheadzNFT contract", function () {
       await contract.activate(
         80,
         5555,
+        53,
         "https://nft.uri/",
         fundRecipient.address
       );
     });
 
     it("mints tokenID to toAddress", async function () {
-      await contract.mintTo(addrs[1].address, 1);
+      await contract.mintVIP(addrs[1].address, 1);
       expect(await contract.ownerOf(1)).to.equal(addrs[1].address);
     });
 
     it("increases toAddress balance by 1", async function () {
       expect(await contract.balanceOf(addrs[1].address)).to.equal(0);
-      await contract.mintTo(addrs[1].address, 1);
+      await contract.mintVIP(addrs[1].address, 1);
       expect(await contract.balanceOf(addrs[1].address)).to.equal(1);
-      await contract.mintTo(addrs[1].address, 2);
+      await contract.mintVIP(addrs[1].address, 2);
       expect(await contract.balanceOf(addrs[1].address)).to.equal(2);
     });
 
     describe("when tokenId already minted", function () {
       it("reverts with ERC721: token already minted", async function () {
-        await contract.mintTo(addrs[0].address, 1);
-        await expect(contract.mintTo(addrs[0].address, 1)).to.be.revertedWith(
+        await contract.mintVIP(addrs[0].address, 1);
+        await expect(contract.mintVIP(addrs[0].address, 1)).to.be.revertedWith(
           "ERC721: token already minted"
         );
       });
@@ -247,7 +284,7 @@ describe("NeighborheadzNFT contract", function () {
 
     describe("when tokenId is 0", function () {
       it("reverts with NBHZ: Invalid tokenId", async function () {
-        await expect(contract.mintTo(addrs[0].address, 0)).to.be.revertedWith(
+        await expect(contract.mintVIP(addrs[0].address, 0)).to.be.revertedWith(
           "NBHZ: Invalid tokenId"
         );
       });
@@ -255,7 +292,7 @@ describe("NeighborheadzNFT contract", function () {
 
     describe("when tokenId is greater than startIndex", function () {
       it("reverts with NBHZ: Invalid tokenId", async function () {
-        await expect(contract.mintTo(addrs[0].address, 81)).to.be.revertedWith(
+        await expect(contract.mintVIP(addrs[0].address, 81)).to.be.revertedWith(
           "NBHZ: Invalid tokenId"
         );
       });
@@ -264,7 +301,7 @@ describe("NeighborheadzNFT contract", function () {
     describe("when caller is not admin", function () {
       it("reverts with AccessControl:", async function () {
         await expect(
-          contract.connect(addrs[0]).mintTo(addrs[0].address, 1)
+          contract.connect(addrs[0]).mintVIP(addrs[0].address, 1)
         ).to.be.revertedWith("AccessControl:");
       });
     });
@@ -290,6 +327,7 @@ describe("NeighborheadzNFT contract", function () {
       fundRecipient = addrs[2];
       await contract.activate(
         80,
+        53,
         90,
         "https://nft.uri/",
         fundRecipient.address
@@ -346,12 +384,23 @@ describe("NeighborheadzNFT contract", function () {
 
     describe("when preSaleRoot exists", function () {
       let minter: any;
-      let tree: any;
+      let tree: MerkleTree;
+
+      function generateLeaf(address: string): Buffer {
+        return Buffer.from(
+          // Hash in appropriate Merkle format
+          ethers.utils.solidityKeccak256(["address"], [address]).slice(2),
+          "hex"
+        );
+      }
 
       beforeEach(async function () {
         minter = addrs[1];
-        tree = new MerkleTree([minter.address, addrs[2].address], keccak256, {
-          hashLeaves: true,
+        const leaves: Buffer[] = [
+          generateLeaf(minter.address),
+          generateLeaf(addrs[2].address),
+        ];
+        tree = new MerkleTree(leaves, keccak256, {
           sortPairs: true,
         });
         await contract.setPreSaleRoot(tree.getHexRoot());
@@ -359,6 +408,19 @@ describe("NeighborheadzNFT contract", function () {
 
       describe("when valid proof", function () {
         it("mints tokenID to minter", async function () {
+          // const outputPath: string = path.join(__dirname, "../merkle.json");
+          // await fs.writeFileSync(
+          //   // Output to merkle.json
+          //   outputPath,
+          //   // Root + full tree
+          //   JSON.stringify({
+          //     root: tree.getHexRoot(),
+          //     tree: tree,
+          //   })
+          // );
+          // console.log(tree.getHexLeaves());
+          // console.log(tree.getHexProof(keccak256(minter.address)));
+
           await mintCaller(minter, tree.getHexProof(keccak256(minter.address)));
 
           expect(await contract.ownerOf(81)).to.equal(minter.address);
@@ -428,7 +490,7 @@ describe("NeighborheadzNFT contract", function () {
 
         await expect(
           contract.connect(minter).mint(salt, sig, [], {
-            value: ethers.utils.parseUnits("0.09", "ether"),
+            value: ethers.utils.parseUnits("0.07", "ether"),
           })
         ).to.be.revertedWith("NBHZ: Invalid amount");
       });
@@ -495,6 +557,54 @@ describe("NeighborheadzNFT contract", function () {
             value: ethers.utils.parseUnits("0.1", "ether"),
           })
         ).to.be.revertedWith("NBHZ: Unauthorized");
+      });
+    });
+  });
+
+  describe("#giveaway(address toAddress) external onlyAdmin", function () {
+    let fundRecipient: any;
+
+    beforeEach(async function () {
+      fundRecipient = addrs[2];
+      await contract.activate(
+        30,
+        3,
+        90,
+        "https://nft.uri/",
+        fundRecipient.address
+      );
+    });
+
+    it("increases tokenIndex by 1", async function () {
+      await contract.giveaway(addrs[0].address);
+      expect(await contract.ownerOf(31)).to.equal(addrs[0].address);
+
+      await contract.giveaway(addrs[1].address);
+      expect(await contract.ownerOf(32)).to.equal(addrs[1].address);
+    });
+
+    describe("when giveaway reach max giveaway", function () {
+      it("reverts NBHZ: Can not giveaway", async function () {
+        await contract.giveaway(addrs[0].address);
+        expect(await contract.ownerOf(31)).to.equal(addrs[0].address);
+
+        await contract.giveaway(addrs[1].address);
+        expect(await contract.ownerOf(32)).to.equal(addrs[1].address);
+
+        await contract.giveaway(addrs[2].address);
+        expect(await contract.ownerOf(33)).to.equal(addrs[2].address);
+
+        await expect(contract.giveaway(addrs[3].address)).to.be.revertedWith(
+          "NBHZ: Can not giveaway"
+        );
+      });
+    });
+
+    describe("when caller is not admin", function () {
+      it("reverts with AccessControl:", async function () {
+        await expect(
+          contract.connect(addrs[0]).giveaway(addrs[1].address)
+        ).to.be.revertedWith("AccessControl:");
       });
     });
   });

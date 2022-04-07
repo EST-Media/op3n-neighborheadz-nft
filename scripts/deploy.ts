@@ -1,5 +1,8 @@
 import hre = require("hardhat");
 
+// beforeReveal: "ipfs://QmYsAGA6UWkqScDuphvwbfXuyPJ3siYY8JJCMVQAixp42x/"
+// aftereReveal:
+
 async function main() {
   const contractClass = "NeighborheadzNFT";
   const contractFactory = await hre.ethers.getContractFactory(contractClass);
@@ -8,13 +11,19 @@ async function main() {
   await contract.deployed();
 
   const [owner] = await hre.ethers.getSigners();
-  await contract.activate(80, 5555, "tokenURI", owner.address);
+  await contract.activate(
+    30,
+    53,
+    5555,
+    "ipfs://QmXnMrJuNANFRV2GfdiyAdNkjcKzR3HoJWpxXfz49x1aXU/",
+    owner.address
+  );
 
-  console.log(contractClass, contract.address);
+  console.log(contractClass, contract.address.toLowerCase());
   console.log("-----------------Verify Contract-----------------");
   console.log(
     "hh verify",
-    contract.address,
+    contract.address.toLowerCase(),
     "--contract contracts/" +
       contractClass +
       ".sol:" +
