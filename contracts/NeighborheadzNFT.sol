@@ -6,14 +6,13 @@ pragma solidity ^0.8.12;
 /// @author: op3n.world
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
-contract NeighborheadzNFT is AccessControl, ReentrancyGuard, ERC721, ERC721Royalty {
+contract NeighborheadzNFT is AccessControl, ERC721, ERC721Royalty {
     using ECDSA for bytes32;
     using Address for address;
 
